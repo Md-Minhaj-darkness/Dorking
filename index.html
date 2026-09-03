@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dorking :: search console</title>
 <style>
-  @font-face {
-    font-family: 'JBM';
-    src: local('JetBrains Mono');
-  }
-
   :root{
     --bg:#05070a;
     --panel:#0a0f0c;
@@ -21,6 +16,21 @@
     --green-dim:#08a86a;
     --amber:#ffb347;
     --red:#ff5f56;
+    --field-bg:#060907;
+  }
+
+  html[data-theme="light"]{
+    --bg:#eef2ee;
+    --panel:#f7faf7;
+    --border:#cfe0d3;
+    --border-hi:#9fc9a9;
+    --text:#0c1a10;
+    --dim:#4c6d55;
+    --green:#0a8a52;
+    --green-dim:#0a8a52;
+    --amber:#a15c00;
+    --red:#c23b32;
+    --field-bg:#e5ede6;
   }
 
   *{box-sizing:border-box;}
@@ -33,6 +43,7 @@
     font-family:'JetBrains Mono','Fira Code',ui-monospace,Menlo,Consolas,monospace;
     min-height:100vh;
     overflow-x:hidden;
+    transition:background 0.2s ease, color 0.2s ease;
   }
 
   canvas#rain{
@@ -43,6 +54,7 @@
     opacity:0.16;
     z-index:0;
   }
+  html[data-theme="light"] canvas#rain{opacity:0.06;}
 
   .scanlines{
     pointer-events:none;
@@ -57,6 +69,7 @@
     );
     mix-blend-mode:multiply;
   }
+  html[data-theme="light"] .scanlines{opacity:0.35;}
 
   .vignette{
     pointer-events:none;
@@ -65,6 +78,7 @@
     z-index:2;
     box-shadow:inset 0 0 180px rgba(0,0,0,0.75);
   }
+  html[data-theme="light"] .vignette{box-shadow:inset 0 0 180px rgba(0,0,0,0.08);}
 
   .wrap{
     position:relative;
@@ -78,12 +92,12 @@
 
   .term{
     width:100%;
-    max-width:760px;
+    max-width:820px;
     background:var(--panel);
     border:1px solid var(--border-hi);
     box-shadow:
       0 0 0 1px rgba(0,0,0,0.6),
-      0 30px 80px rgba(0,0,0,0.65),
+      0 30px 80px rgba(0,0,0,0.45),
       0 0 60px rgba(0,255,157,0.05);
   }
 
@@ -93,7 +107,7 @@
     gap:8px;
     padding:10px 14px;
     border-bottom:1px solid var(--border);
-    background:linear-gradient(180deg,#0d1410,#0a0f0c);
+    background:linear-gradient(180deg,rgba(0,0,0,0.15),rgba(0,0,0,0));
   }
 
   .dot{
@@ -110,9 +124,31 @@
     letter-spacing:0.02em;
   }
 
+  .theme-toggle{
+    margin-left:auto;
+    display:flex;
+    border:1px solid var(--border-hi);
+    overflow:hidden;
+  }
+  .theme-toggle button{
+    background:transparent;
+    border:none;
+    color:var(--dim);
+    font-family:inherit;
+    font-size:11px;
+    padding:5px 10px;
+    cursor:pointer;
+    letter-spacing:0.03em;
+  }
+  .theme-toggle button.active{
+    background:var(--green);
+    color:#04120b;
+  }
+  html[data-theme="light"] .theme-toggle button.active{color:#fff;}
+
   .screen{
     padding:26px 26px 30px;
-    min-height:420px;
+    min-height:460px;
   }
 
   .boot-line{
@@ -121,7 +157,6 @@
     line-height:1.7;
     white-space:pre-wrap;
   }
-  .boot-line .ok{color:var(--green);}
 
   .hero{
     margin:22px 0 26px;
@@ -139,14 +174,22 @@
   }
   @keyframes blink{50%{opacity:0;}}
 
+  .row{
+    display:flex;
+    gap:10px;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+  }
+
   .field-row{
     display:flex;
     align-items:center;
     gap:10px;
     border:1px solid var(--border-hi);
-    background:#060907;
+    background:var(--field-bg);
     padding:12px 14px;
-    margin-bottom:18px;
+    flex:1;
+    min-width:220px;
   }
   .field-row .prompt{color:var(--green);font-size:14px;flex-shrink:0;}
   .field-row input{
@@ -158,13 +201,37 @@
     font-family:inherit;
     font-size:14px;
     caret-color:var(--green);
+    min-width:0;
   }
-  .field-row input::placeholder{color:#3c5546;}
+  .field-row input::placeholder{color:var(--dim);opacity:0.6;}
+
+  .select-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border:1px solid var(--border-hi);
+    background:var(--field-bg);
+    padding:12px 14px;
+    flex:1;
+    min-width:220px;
+  }
+  .select-row .prompt{color:var(--green);font-size:14px;flex-shrink:0;}
+  .select-row select{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--text);
+    font-family:inherit;
+    font-size:13px;
+    min-width:0;
+  }
+  .select-row select option{background:var(--panel);color:var(--text);}
 
   .built-query{
     font-size:12px;
     color:var(--dim);
-    margin:-8px 0 20px 2px;
+    margin:6px 0 20px 2px;
     min-height:16px;
     word-break:break-all;
   }
@@ -218,7 +285,7 @@
   .op b{color:var(--green);font-weight:400;}
   .op:hover{
     border-color:var(--green-dim);
-    background:rgba(0,255,157,0.05);
+    background:rgba(0,255,157,0.06);
   }
   .op .desc{display:block;color:var(--dim);font-size:10px;margin-top:3px;}
 
@@ -239,6 +306,7 @@
   @media (max-width:480px){
     .screen{padding:18px 16px 22px;}
     .ops{grid-template-columns:1fr 1fr;}
+    .row{flex-direction:column;}
   }
 </style>
 </head>
@@ -255,18 +323,29 @@
       <span class="dot"></span>
       <span class="dot live"></span>
       <span class="path">guest@dorking: ~/search</span>
+      <div class="theme-toggle">
+        <button id="btnDark" class="active" type="button">black</button>
+        <button id="btnLight" type="button">white</button>
+      </div>
     </div>
 
     <div class="screen">
       <div class="boot-line" id="bootLine"></div>
 
       <div class="hero" id="hero" style="display:none;">
-        Build a Google dork in seconds. Type a keyword, stack operators below, run it.<span class="cursor"></span>
+        Enter a target domain, pick what to find, and run the dork.<span class="cursor"></span>
       </div>
 
-      <div class="field-row" id="fieldRow" style="display:none;">
-        <span class="prompt">&gt;</span>
-        <input id="queryInput" type="text" placeholder="e.g. admin login panel" autocomplete="off" spellcheck="false">
+      <div class="row" id="inputRow" style="display:none;">
+        <div class="field-row">
+          <span class="prompt">site:</span>
+          <input id="targetInput" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="select-row">
+          <span class="prompt">find:</span>
+          <select id="typeSelect"></select>
+        </div>
       </div>
 
       <div class="built-query" id="builtQuery" style="display:none;"></div>
@@ -274,7 +353,7 @@
       <button class="run-btn" id="runBtn" style="display:none;">[ RUN SEARCH ]</button>
 
       <div id="opsBlock" style="display:none;">
-        <div class="section-label">operators — click to append</div>
+        <div class="section-label">or click an extra operator to append manually</div>
         <div class="ops" id="opsGrid"></div>
 
         <div class="footer-note">
@@ -288,6 +367,25 @@
 
 <script>
 (function(){
+  // ---- theme toggle ----
+  var html = document.documentElement;
+  var btnDark = document.getElementById('btnDark');
+  var btnLight = document.getElementById('btnLight');
+
+  function setTheme(mode){
+    if(mode === 'light'){
+      html.setAttribute('data-theme','light');
+      btnLight.classList.add('active');
+      btnDark.classList.remove('active');
+    } else {
+      html.removeAttribute('data-theme');
+      btnDark.classList.add('active');
+      btnLight.classList.remove('active');
+    }
+  }
+  btnDark.addEventListener('click', function(){ setTheme('dark'); });
+  btnLight.addEventListener('click', function(){ setTheme('light'); });
+
   // ---- matrix rain background ----
   var canvas = document.getElementById('rain');
   var ctx = canvas.getContext('2d');
@@ -304,9 +402,10 @@
   window.addEventListener('resize', resize);
 
   function draw(){
-    ctx.fillStyle = 'rgba(5,7,10,0.08)';
+    var isLight = html.getAttribute('data-theme') === 'light';
+    ctx.fillStyle = isLight ? 'rgba(238,242,238,0.10)' : 'rgba(5,7,10,0.08)';
     ctx.fillRect(0,0,w,h);
-    ctx.fillStyle = '#00ff9d';
+    ctx.fillStyle = isLight ? '#0a8a52' : '#00ff9d';
     ctx.font = '14px monospace';
     for(var i=0;i<drops.length;i++){
       var ch = chars[Math.floor(Math.random()*chars.length)];
@@ -324,8 +423,8 @@
 
   // ---- boot sequence typing ----
   var bootText = [
-    'booting dorking-console v1.0 ...',
-    'loading search operators ... ok',
+    'booting dorking-console v1.1 ...',
+    'loading search categories ... ok',
     'no target authorized yet — awaiting input'
   ];
   var bootEl = document.getElementById('bootLine');
@@ -344,51 +443,83 @@
 
   function revealUI(){
     document.getElementById('hero').style.display = 'block';
-    document.getElementById('fieldRow').style.display = 'flex';
+    document.getElementById('inputRow').style.display = 'flex';
     document.getElementById('builtQuery').style.display = 'block';
     document.getElementById('runBtn').style.display = 'block';
     document.getElementById('opsBlock').style.display = 'block';
-    document.getElementById('queryInput').focus();
+    document.getElementById('targetInput').focus();
     updateQuery();
   }
 
   setTimeout(typeBoot, 250);
 
-  // ---- dork operators ----
+  // ---- find-type categories (site: + category dork) ----
+  var categories = [
+    {label:'Subdomains', dork:'*.__TARGET__'},
+    {label:'Login panels', dork:'__TARGET__ (inurl:login OR intitle:"login")'},
+    {label:'Signup pages', dork:'__TARGET__ (inurl:signup OR inurl:register)'},
+    {label:'Exposed directories', dork:'__TARGET__ intitle:"index of"'},
+    {label:'PDF documents', dork:'__TARGET__ filetype:pdf'},
+    {label:'Config / env files', dork:'__TARGET__ (filetype:env OR filetype:config OR filetype:ini)'},
+    {label:'SQL / database files', dork:'__TARGET__ filetype:sql'},
+    {label:'Backup files', dork:'__TARGET__ (filetype:bak OR filetype:old OR filetype:backup)'},
+    {label:'Admin panels', dork:'__TARGET__ inurl:admin'},
+    {label:'Uploaded documents', dork:'__TARGET__ (filetype:doc OR filetype:xls OR filetype:ppt)'}
+  ];
+
+  var typeSelect = document.getElementById('typeSelect');
+  categories.forEach(function(c, i){
+    var opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = c.label;
+    typeSelect.appendChild(opt);
+  });
+
+  // ---- extra manual operators ----
   var operators = [
-    {tag:'site:', desc:'limit to a domain'},
-    {tag:'filetype:pdf', desc:'match a file type'},
     {tag:'intitle:', desc:'word in page title'},
-    {tag:'inurl:', desc:'word in the URL'},
     {tag:'intext:', desc:'word in page body'},
-    {tag:'"index of"', desc:'open directory listings'},
-    {tag:'ext:sql', desc:'match file extension'},
+    {tag:'ext:php', desc:'match file extension'},
     {tag:'-inurl:', desc:'exclude URL pattern'},
     {tag:'cache:', desc:'view cached version'},
     {tag:'related:', desc:'similar sites'}
   ];
 
   var opsGrid = document.getElementById('opsGrid');
+  var targetInput = document.getElementById('targetInput');
+
   operators.forEach(function(op){
     var btn = document.createElement('button');
     btn.className = 'op';
     btn.innerHTML = '<b>' + op.tag + '</b><span class="desc">' + op.desc + '</span>';
     btn.addEventListener('click', function(){
-      var input = document.getElementById('queryInput');
-      var sep = input.value.trim().length ? ' ' : '';
-      input.value = input.value.trim() + sep + op.tag;
-      input.focus();
+      targetInput.dataset.extra = (targetInput.dataset.extra || '') + ' ' + op.tag;
       updateQuery();
+      targetInput.focus();
     });
     opsGrid.appendChild(btn);
   });
 
   // ---- query preview + run ----
-  var input = document.getElementById('queryInput');
   var preview = document.getElementById('builtQuery');
 
+  function buildQuery(){
+    var target = targetInput.value.trim();
+    var cat = categories[typeSelect.value] || categories[0];
+    var extra = (targetInput.dataset.extra || '').trim();
+
+    if(!target){
+      return '';
+    }
+    var q = cat.dork.split('__TARGET__').join(target);
+    if(extra){
+      q = q + ' ' + extra;
+    }
+    return q;
+  }
+
   function updateQuery(){
-    var q = input.value.trim();
+    var q = buildQuery();
     if(!q){
       preview.innerHTML = 'query preview will appear here';
     } else {
@@ -396,14 +527,15 @@
     }
   }
 
-  input.addEventListener('input', updateQuery);
-  input.addEventListener('keydown', function(e){
+  targetInput.addEventListener('input', updateQuery);
+  typeSelect.addEventListener('change', updateQuery);
+  targetInput.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ runSearch(); }
   });
 
   function runSearch(){
-    var q = input.value.trim();
-    if(!q) { input.focus(); return; }
+    var q = buildQuery();
+    if(!q) { targetInput.focus(); return; }
     var url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
     window.open(url, '_blank', 'noopener');
   }
