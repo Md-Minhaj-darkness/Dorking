@@ -307,6 +307,56 @@
     .screen{padding:18px 16px 22px;}
     .ops{grid-template-columns:1fr 1fr;}
     .row{flex-direction:column;}
+  }  .lib-label{margin-top:8px;}
+
+  .lib-tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:14px;
+  }
+  .lib-tab{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--dim);
+    font-family:inherit;
+    font-size:11px;
+    padding:6px 10px;
+    cursor:pointer;
+  }
+  .lib-tab.active{
+    border-color:var(--green-dim);
+    color:var(--green);
+    background:rgba(0,255,157,0.06);
+  }
+
+  .lib-list{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:24px;
+  }
+  .lib-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    border:1px solid var(--border);
+    padding:9px 12px;
+    cursor:pointer;
+    font-size:12px;
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+  .lib-item:hover{
+    border-color:var(--green-dim);
+    background:rgba(0,255,157,0.05);
+  }
+  .lib-item .lib-dork{color:var(--text);}
+  .lib-item .lib-dork b{color:var(--green);font-weight:400;}
+  .lib-item .lib-go{color:var(--dim);font-size:11px;flex-shrink:0;}
+
+  @media (max-width:480px){
+    .lib-item{flex-direction:column;align-items:flex-start;}
   }
 </style>
 </head>
@@ -383,6 +433,12 @@
           Built for OSINT and security research on systems you own or are authorized to test.
           <span class="amber">Do not use this to access systems without permission.</span>
         </div>
+      </div>
+
+      <div id="libraryBlock" style="display:none;">
+        <div class="section-label lib-label">dork library — click any entry to load it above</div>
+        <div class="lib-tabs" id="libTabs"></div>
+        <div class="lib-list" id="libList"></div>
       </div>
     </div>
   </div>
@@ -470,6 +526,7 @@
     document.getElementById('builtQuery').style.display = 'block';
     document.getElementById('runBtn').style.display = 'block';
     document.getElementById('opsBlock').style.display = 'block';
+    document.getElementById('libraryBlock').style.display = 'block';
     document.getElementById('targetInput').focus();
     updateQuery();
   }
@@ -620,6 +677,72 @@
   }
 
   document.getElementById('runBtn').addEventListener('click', runSearch);
+
+  // ---- dork library (category tabs + prebuilt entries) ----
+  var library = {
+    'Recon': [
+      {text:'site:{target} inurl:api', note:'exposed API endpoints'},
+      {text:'site:{target} ext:json intext:password', note:'leaked credentials in JSON'},
+      {text:'site:{target} intitle:"index of" "parent directory"', note:'open directory listings'},
+      {text:'site:{target} inurl:wp-content OR inurl:wp-includes', note:'WordPress install trace'}
+    ],
+    'Login / Access': [
+      {text:'site:{target} (inurl:login OR inurl:signin OR intitle:"login")', note:'login panels'},
+      {text:'site:{target} inurl:admin (intitle:"login" OR intitle:"admin")', note:'admin panels'},
+      {text:'site:{target} inurl:portal OR inurl:dashboard', note:'internal portals'}
+    ],
+    'Files & Backups': [
+      {text:'site:{target} (filetype:sql OR filetype:db OR filetype:sqlite)', note:'database dumps'},
+      {text:'site:{target} (filetype:bak OR filetype:old OR filetype:backup OR filetype:swp)', note:'backup files'},
+      {text:'site:{target} (filetype:env OR filetype:ini OR filetype:yml) intext:secret', note:'config/secret files'},
+      {text:'site:{target} (filetype:log) intext:error', note:'exposed log files'}
+    ],
+    'Github': [
+      {text:'site:github.com "{target}" "api_key"', note:'leaked API keys mentioning target'},
+      {text:'site:github.com "{target}" "password"', note:'leaked credentials on GitHub'},
+      {text:'site:github.com "{target}" filename:.env', note:'exposed .env files on GitHub'}
+    ]
+  };
+
+  var libTabs = document.getElementById('libTabs');
+  var libList = document.getElementById('libList');
+  var activeCat = Object.keys(library)[0];
+
+  function renderLibTabs(){
+    libTabs.innerHTML = '';
+    Object.keys(library).forEach(function(cat){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'lib-tab' + (cat === activeCat ? ' active' : '');
+      btn.textContent = cat;
+      btn.addEventListener('click', function(){
+        activeCat = cat;
+        renderLibTabs();
+        renderLibList();
+      });
+      libTabs.appendChild(btn);
+    });
+  }
+
+  function renderLibList(){
+    libList.innerHTML = '';
+    library[activeCat].forEach(function(entry){
+      var row = document.createElement('div');
+      row.className = 'lib-item';
+      row.innerHTML = '<span class="lib-dork">' + entry.text.replace('{target}', '<b>{target}</b>') +
+        '</span><span class="lib-go">' + entry.note + ' — click to run →</span>';
+      row.addEventListener('click', function(){
+        var target = targetInput.value.trim() || 'example.com';
+        var q = entry.text.split('{target}').join(target);
+        var eng = currentEngine();
+        window.open(eng.url + encodeURIComponent(q), '_blank', 'noopener');
+      });
+      libList.appendChild(row);
+    });
+  }
+
+  renderLibTabs();
+  renderLibList();
 })();
 </script>
 
