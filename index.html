@@ -333,7 +333,7 @@
       <div class="boot-line" id="bootLine"></div>
 
       <div class="hero" id="hero" style="display:none;">
-        Enter a target domain, pick what to find, and run the dork.<span class="cursor"></span>
+        Enter a target domain, pick what to find, choose a search engine, and run the dork.<span class="cursor"></span>
       </div>
 
       <div class="row" id="inputRow" style="display:none;">
@@ -346,6 +346,11 @@
           <span class="prompt">find:</span>
           <select id="typeSelect"></select>
         </div>
+
+        <div class="select-row">
+          <span class="prompt">via:</span>
+          <select id="engineSelect"></select>
+        </div>
       </div>
 
       <div class="built-query" id="builtQuery" style="display:none;"></div>
@@ -356,7 +361,25 @@
         <div class="section-label">or click an extra operator to append manually</div>
         <div class="ops" id="opsGrid"></div>
 
+        <div class="section-label">add your own dork</div>
+        <div class="row">
+          <div class="field-row">
+            <span class="prompt">name:</span>
+            <input id="customName" type="text" placeholder="e.g. Exposed API keys" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field-row">
+            <span class="prompt">dork:</span>
+            <input id="customPattern" type="text" placeholder='use __TARGET__ where the site goes, e.g. __TARGET__ filetype:log "api_key"' autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <button class="run-btn" id="addCustomBtn" type="button" style="margin-bottom:24px;">[ ADD TO LIST ]</button>
+
         <div class="footer-note">
+          Custom dorks are saved for this browser session only — refreshing the page clears them.
+          To make one permanent, add it to the <b style="color:var(--green);font-weight:400;">categories</b> array in the page's source code.
+          <br><br>
           Built for OSINT and security research on systems you own or are authorized to test.
           <span class="amber">Do not use this to access systems without permission.</span>
         </div>
@@ -467,12 +490,60 @@
     {label:'Uploaded documents', dork:'__TARGET__ (filetype:doc OR filetype:xls OR filetype:ppt)'}
   ];
 
-  var typeSelect = document.getElementById('typeSelect');
-  categories.forEach(function(c, i){
+  // ---- search engines ----
+  var engines = [
+    {label:'Google', url:'https://www.google.com/search?q='},
+    {label:'Bing', url:'https://www.bing.com/search?q='},
+    {label:'DuckDuckGo', url:'https://duckduckgo.com/?q='},
+    {label:'Yahoo', url:'https://search.yahoo.com/search?p='},
+    {label:'Startpage', url:'https://www.startpage.com/sp/search?query='},
+    {label:'Yandex', url:'https://yandex.com/search/?text='}
+  ];
+
+  var engineSelect = document.getElementById('engineSelect');
+  engines.forEach(function(e, i){
     var opt = document.createElement('option');
     opt.value = i;
-    opt.textContent = c.label;
-    typeSelect.appendChild(opt);
+    opt.textContent = e.label;
+    engineSelect.appendChild(opt);
+  });
+
+  var typeSelect = document.getElementById('typeSelect');
+
+  function renderOptions(){
+    typeSelect.innerHTML = '';
+    categories.forEach(function(c, i){
+      var opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = c.label + (c.custom ? ' (custom)' : '');
+      typeSelect.appendChild(opt);
+    });
+  }
+  renderOptions();
+
+  // ---- add custom dork ----
+  var customName = document.getElementById('customName');
+  var customPattern = document.getElementById('customPattern');
+  var addCustomBtn = document.getElementById('addCustomBtn');
+
+  addCustomBtn.addEventListener('click', function(){
+    var name = customName.value.trim();
+    var pattern = customPattern.value.trim();
+
+    if(!name || !pattern){
+      customName.focus();
+      return;
+    }
+    if(pattern.indexOf('__TARGET__') === -1){
+      pattern = '__TARGET__ ' + pattern;
+    }
+    categories.push({label:name, dork:pattern, custom:true});
+    renderOptions();
+    typeSelect.value = categories.length - 1;
+    customName.value = '';
+    customPattern.value = '';
+    updateQuery();
+    customName.focus();
   });
 
   // ---- extra manual operators ----
@@ -518,17 +589,24 @@
     return q;
   }
 
+  function currentEngine(){
+    return engines[engineSelect.value] || engines[0];
+  }
+
   function updateQuery(){
     var q = buildQuery();
+    var eng = currentEngine();
+    var short = eng.url.replace('https://','').split('?')[0].split('/')[0];
     if(!q){
       preview.innerHTML = 'query preview will appear here';
     } else {
-      preview.innerHTML = 'google.com/search?q=<span>' + encodeURIComponent(q) + '</span>';
+      preview.innerHTML = short + ' → <span>' + eng.url + encodeURIComponent(q) + '</span>';
     }
   }
 
   targetInput.addEventListener('input', updateQuery);
   typeSelect.addEventListener('change', updateQuery);
+  engineSelect.addEventListener('change', updateQuery);
   targetInput.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ runSearch(); }
   });
@@ -536,7 +614,8 @@
   function runSearch(){
     var q = buildQuery();
     if(!q) { targetInput.focus(); return; }
-    var url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+    var eng = currentEngine();
+    var url = eng.url + encodeURIComponent(q);
     window.open(url, '_blank', 'noopener');
   }
 
