@@ -307,7 +307,25 @@
     .screen{padding:18px 16px 22px;}
     .ops{grid-template-columns:1fr 1fr;}
     .row{flex-direction:column;}
-  }  .lib-label{margin-top:8px;}
+  }  .subdomain-toggle{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    font-size:11px;
+    color:var(--dim);
+    line-height:1.6;
+    margin:2px 0 18px 2px;
+    cursor:pointer;
+  }
+  .subdomain-toggle input{
+    margin-top:2px;
+    accent-color:var(--green);
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .subdomain-toggle span{color:var(--green-dim);}
+
+  .lib-label{margin-top:8px;}
 
   .lib-tabs{
     display:flex;
@@ -403,6 +421,11 @@
         </div>
       </div>
 
+      <label class="subdomain-toggle" id="subdomainToggle" style="display:none;">
+        <input type="checkbox" id="includeSubdomains">
+        also search across subdomains — turns <span>site:domain.com</span> into <span>(site:domain.com OR site:*.domain.com)</span>
+      </label>
+
       <div class="built-query" id="builtQuery" style="display:none;"></div>
 
       <button class="run-btn" id="runBtn" style="display:none;">[ RUN SEARCH ]</button>
@@ -430,7 +453,7 @@
         <div class="row">
           <div class="field-row">
             <span class="prompt">dork:</span>
-            <input id="customPattern" type="text" placeholder='use __TARGET__ where the site goes, e.g. __TARGET__ filetype:log "api_key"' autocomplete="off" spellcheck="false">
+            <input id="customPattern" type="text" placeholder='use __TARGET__ for the raw domain, or __SITE__ to reuse the site: filter above' autocomplete="off" spellcheck="false">
           </div>
         </div>
         <button class="run-btn" id="addCustomBtn" type="button" style="margin-bottom:24px;">[ ADD TO LIST ]</button>
@@ -536,6 +559,7 @@
     document.getElementById('runBtn').style.display = 'block';
     document.getElementById('opsBlock').style.display = 'block';
     document.getElementById('libraryBlock').style.display = 'block';
+    document.getElementById('subdomainToggle').style.display = 'flex';
     document.getElementById('targetInput').focus();
     updateQuery();
   }
@@ -544,25 +568,16 @@
 
   // ---- find-type categories (site: + category dork) ----
   var categories = [
-    {label:'Subdomains', dork:'*.__TARGET__'},
-    {label:'Subdomains Level 1 to 6', dork:'*.*.*.*.*.*.*.__TARGET__'},
-    {label:'Json Files', dork:'__TARGET__ filetype:json | filetype:jsonl | filetype:ndjson | filetype:geojson | filetype:topojson | filetype:json5 | filetype:jsonc | filetype:jsonld | filetype:har | filetype:map | filetype:manifest | filetype:config.json | filetype:settings.json | filetype:package.json | filetype:composer.json | filetype:tsconfig.json | filetype:jsconfig.json | filetype:launch.json | filetype:tasks.json | filetype:app.json | filetype:angular.json | filetype:firebase.json | filetype:vercel.json | filetype:netlify.json | filetype:manifest.json | filetype:service-worker.json | filetype:assetlinks.json | filetype:security.json | filetype:policy.json | filetype:permissions.json | filetype:routes.json | filetype:config.json.bak | filetype:settings.json.bak | filetype:package.json.bak | filetype:composer.json.bak | filetype:manifest.json.bak | filetype:config.json.old | filetype:settings.json.old | filetype:package.json.old | filetype:composer.json.old | filetype:manifest.json.old | filetype:config.json.backup | filetype:settings.json.backup | filetype:package.json.backup | filetype:composer.json.backup | filetype:manifest.json.backup | filetype:config.json.gz | filetype:settings.json.gz | filetype:package.json.gz | filetype:composer.json.gz | filetype:manifest.json.gz | filetype:data.json | filetype:database.json | filetype:db.json | filetype:users.json | filetype:user.json | filetype:accounts.json | filetype:account.json | filetype:profile.json | filetype:profiles.json | filetype:session.json | filetype:sessions.json | filetype:auth.json | filetype:oauth.json | filetype:token.json | filetype:tokens.json | filetype:api.json | filetype:api-config.json | filetype:routes.json | filetype:endpoints.json | filetype:swagger.json | filetype:openapi.json | filetype:spec.json | filetype:response.json | filetype:request.json | filetype:export.json | filetype:backup.json | filetype:debug.json | filetype:log.json | filetype:error.json | filetype:errors.json | filetype:build.json | filetype:deployment.json | filetype:docker.json | filetype:webpack.json | filetype:babel.json | filetype:eslint.json | filetype:prettier.json | filetype:workspace.json | filetype:metadata.json | filetype:package-lock.json | filetype:yarn.lock.json | filetype:composer.lock.json | filetype:pnpm-lock.yaml'},
-    {label:'s3 Bucket', dork:'__TARGET__ | "__TARGET__" "s3.amazonaws.com" | "__TARGET__" "s3.us-east-1.amazonaws.com" | "__TARGET__" "s3.us-west-1.amazonaws.com" | "__TARGET__" "s3.us-west-2.amazonaws.com" | "__TARGET__" "s3.eu-west-1.amazonaws.com" | "__TARGET__" "s3.eu-west-2.amazonaws.com" | "__TARGET__" "s3.eu-west-3.amazonaws.com" | "__TARGET__" "s3.eu-central-1.amazonaws.com" | "__TARGET__" "s3.eu-central-2.amazonaws.com" | "__TARGET__" "s3.eu-north-1.amazonaws.com" | "__TARGET__" "s3.ap-south-1.amazonaws.com" | "__TARGET__" "s3.ap-south-2.amazonaws.com" | "__TARGET__" "s3.ap-southeast-1.amazonaws.com" | "__TARGET__" "s3.ap-southeast-2.amazonaws.com" | "__TARGET__" "s3.ap-southeast-3.amazonaws.com" | "__TARGET__" "s3.ap-southeast-4.amazonaws.com" | "__TARGET__" "s3.ap-northeast-1.amazonaws.com" | "__TARGET__" "s3.ap-northeast-2.amazonaws.com" | "__TARGET__" "s3.ap-northeast-3.amazonaws.com" | "__TARGET__" "s3.ca-central-1.amazonaws.com" | "__TARGET__" "s3.ca-west-1.amazonaws.com" | "__TARGET__" "s3.sa-east-1.amazonaws.com" | "__TARGET__" "s3.il-central-1.amazonaws.com" | "__TARGET__" "s3.me-south-1.amazonaws.com" | "__TARGET__" "s3.me-central-1.amazonaws.com" | "__TARGET__" "s3.af-south-1.amazonaws.com" | "__TARGET__" "s3.ap-east-1.amazonaws.com" | "__TARGET__" "s3.us-gov-west-1.amazonaws.com" | "__TARGET__" "s3.us-gov-east-1.amazonaws.com" | "__TARGET__" "s3.amazonaws.com/" | "__TARGET__" "s3-website-us-east-1.amazonaws.com" | "__TARGET__" "s3-website-us-west-2.amazonaws.com" | "__TARGET__" "s3-website.eu-west-1.amazonaws.com" | "__TARGET__" "s3.dualstack.us-east-1.amazonaws.com" | "__TARGET__" "s3.dualstack.us-west-2.amazonaws.com" | "__TARGET__" "s3.dualstack.eu-west-1.amazonaws.com" | "__TARGET__" "s3.dualstack.eu-central-1.amazonaws.com" | "__TARGET__" "s3.dualstack.ap-south-1.amazonaws.com" | "__TARGET__" "s3.dualstack.ap-southeast-1.amazonaws.com" | "__TARGET__" "s3.dualstack.ap-northeast-1.amazonaws.com" | "__TARGET__" "s3-accesspoint.us-east-1.amazonaws.com" | "__TARGET__" "s3-accesspoint.us-west-2.amazonaws.com" | "__TARGET__" "s3-accesspoint.eu-west-1.amazonaws.com" | "__TARGET__" "s3-accesspoint.eu-central-1.amazonaws.com" | "__TARGET__" "s3-accesspoint.ap-south-1.amazonaws.com" | "__TARGET__" "s3-control.us-east-1.amazonaws.com" | "__TARGET__" "s3-control.us-west-2.amazonaws.com" | "__TARGET__" "s3-control.eu-west-1.amazonaws.com" | "__TARGET__" "s3-control.ap-south-1.amazonaws.com" | "__TARGET__" "s3-control.ap-southeast-1.amazonaws.com"'},
-    {label:'Log Files', dork:'__TARGET__ filetype:log | filetype:*.log | filetype:txt | filetype:out | filetype:err | filetype:trace | filetype:dump | filetype:report | filetype:csv | filetype:json | filetype:xml | filetype:ndjson | filetype:jsonl | filetype:conf | filetype:config | filetype:ini | filetype:properties | filetype:yaml | filetype:yml | filetype:log.gz | filetype:txt.gz | filetype:tar.gz | filetype:zip | filetype:7z | filetype:bak | filetype:old | filetype:backup | filetype:sql | filetype:sql.gz | filetype:sqlite | filetype:db | filetype:db3 | filetype:mdmp | filetype:dmp | filetype:pcap | filetype:pcapng | filetype:har | filetype:evtx | filetype:syslog | filetype:access | filetype:journal | filetype:history | filetype:debug | filetype:tmp'},
-    {label:'Swagger/postman file', dork:'*.__TARGET__ inurl:"swagger" | intitle:"swagger" | intext:"swagger" | inurl:"postman" | intitle:"postman" | inurl:"postman file" | intitle:"postman file" | inurl:"openapi" | intitle:"openapi" | inurl:"apidoc" | inurl:"api_doc" | inurl:"swagger ui" | intitle:"swagger ui"'},
-    {label:'Index', dork:'*.__TARGET__ inurl:"index" | intitle:"index" | intitle:"index of"'},
-    {label:'Feedback', dork:'__TARGET__ intitle:"Submit Feedback" | intitle:"Submit a Review" | intitle:"Write a Review" | intitle:"Survey" inurl:survey | intitle:"Report a Problem" | intitle:"Report an Issue" | intitle:"Request a Demo" | intitle:"Book a Demo" | intitle:"Application Form" | intitle:"Apply Now" inurl:apply | intitle:"Contact Us" | intitle:"Contact Us" inurl:contact | intitle:"Contact" inurl:contact | intitle:"Get in Touch" | intitle:"Send us a message" | intitle:"Submit Feedback" | intitle:"Feedback" inurl:feedback | intitle:"Support Request" | intitle:"Submit a Request" | intitle:"Request Information" | intitle:"Contact" | intitle:"Send us a message" | intitle:"Get in Touch" | intitle:"Request a Demo" | intitle:"Book a Demo" | intitle:"Join Our Waitlist" | intitle:"Join the Waitlist" | intitle:"Sign Up" | intitle:"Create Account" | intitle:"Register" | intitle:"Subscribe" | intitle:"Newsletter" | intitle:"News" | intitle:"Feedback" | intitle:"Survey" | intitle:"Submit a Review" | intitle:"Write a Review" | intitle:"Report a Problem" | intitle:"Report an Issue" | intitle:"Support Request" | intitle:"Submit a Request" | intitle:"Request Information" | intitle:"Application Form" | intitle:"Apply Now" | intitle:"Upload" | intitle:"File Upload" | intitle:"Search" | intitle:"Advanced Search"'},
-    {label:'Login panels', dork:'__TARGET__ (inurl:login OR intitle:"login")'},
-    {label:'Signup / Registation pages', dork:'__TARGET__ intitle:"Sign Up" inurl:signup | intitle:"Create Account" | inurl:register | intitle:"Register" | inurl:register | intitle:"Join Our Waitlist" | intitle:"Join the Waitlist" | intitle:"Subscribe" | inurl:newsletter | intitle:"Newsletter" | inurl:subscribe'},
-    {label:'Exposed directories', dork:'__TARGET__ intitle:"index of"'},
-    {label:'Genaric Input', dork:'__TARGET__ intext:"<form" intext:"<input type=\"text\"" inurl:.php | inurl:".php?id=" | intext:"input" | inurl:".*?*=" intext:"input" | inurl:contact | intext:"name" | intext:"email" | intext:"message"'},
-    {label:'PDF documents', dork:'__TARGET__ filetype:pdf'},
-    {label:'Config / env files', dork:'__TARGET__ (filetype:env OR filetype:config OR filetype:ini | filetype:php | inurl:"contact" | intext:"mail(" | filetype:log | inurl:"error" "form")'},
-    {label:'SQL / database files', dork:'__TARGET__ filetype:sql | filetype:sqlite | filetype:sqlite3 | filetype:db | filetype:db3 | filetype:dump | filetype:bak | filetype:backup | filetype:old | filetype:orig | filetype:sql.gz | filetype:sql.bz2 | filetype:sql.xz | filetype:sql.zip | filetype:db.gz | filetype:db.bak | filetype:sqlite.bak | filetype:sqlite.old | filetype:sqlite3.bak | filetype:sqlite3.old | filetype:mdf | filetype:ndf | filetype:ldf | filetype:mdb | filetype:accdb | filetype:frm | filetype:ibd | filetype:myd | filetype:myi | filetype:dbf | filetype:fdb | filetype:gdb | filetype:odb | filetype:ora | filetype:dmp | filetype:exp | filetype:imp | filetype:csv | filetype:tsv | filetype:json | filetype:jsonl | filetype:ndjson | filetype:xml | filetype:yaml | filetype:yml | filetype:ini | filetype:conf | filetype:config | filetype:cnf | filetype:properties | filetype:env | filetype:log | filetype:txt | filetype:out | filetype:err | filetype:trace | filetype:report | filetype:lst | filetype:tmp | filetype:temp | filetype:cache | filetype:tar | filetype:tar.gz | filetype:tgz | filetype:tar.bz2 | filetype:tar.xz | filetype:zip | filetype:7z | filetype:rar | filetype:gz | filetype:bz2 | filetype:xz | filetype:zst | filetype:arc | filetype:war | filetype:jar | filetype:bak.gz | filetype:backup.gz | filetype:old.gz | filetype:sql.tar | filetype:sql.tgz | filetype:dump.gz | filetype:dump.zip | filetype:db.zip | filetype:sqlite.zip | filetype:sqlite3.zip | filetype:csv.gz | filetype:json.gz | filetype:xml.gz | filetype:conf.bak | filetype:config.bak | filetype:ini.bak | filetype:env.bak'},
-    {label:'Backup files', dork:'__TARGET__ (filetype:bak OR filetype:old OR filetype:backup | filetype:git | filetype:gitignore | filetype:gitmodules | filetype:gitattributes | filetype:gitconfig | filetype:gitkeep | filetype:gitlab-ci.yml | filetype:gitlab-ci.yaml | filetype:gitlab | filetype:github | filetype:github-actions | filetype:workflow | filetype:patch | filetype:diff | filetype:bundle | filetype:pack | filetype:idx | filetype:rev | filetype:refs | filetype:head | filetype:heads | filetype:tags | filetype:objects | filetype:commit | filetype:tree | filetype:blob | filetype:repo | filetype:repository | filetype:source | filetype:src | filetype:md | filetype:markdown | filetype:rst | filetype:txt | filetype:toml | filetype:yaml | filetype:yml | filetype:json | filetype:xml | filetype:ini | filetype:conf | filetype:config | filetype:properties | filetype:lock | filetype:sum | filetype:mod | filetype:work | filetype:code-workspace | filetype:editorconfig | filetype:prettierrc | filetype:eslintrc | filetype:babelrc | filetype:npmrc | filetype:yarnrc | filetype:dockerignore | filetype:dockerfile | filetype:makefile | filetype:cmake | filetype:gradle | filetype:properties | filetype:pom | filetype:xml | filetype:rb | filetype:py | filetype:js | filetype:ts | filetype:jsx | filetype:tsx | filetype:go | filetype:rs | filetype:java | filetype:kt | filetype:swift | filetype:php | filetype:asp | filetype:aspx | filetype:jsp | filetype:sh | filetype:bash | filetype:zsh | filetype:fish | filetype:ps1 | filetype:bat | filetype:cmd | filetype:c | filetype:cpp | filetype:h | filetype:hpp | filetype:cs | filetype:vue | filetype:svelte | filetype:sql | filetype:graphql | filetype:gql | filetype:proto | filetype:tf | filetype:hcl | filetype:tfvars | filetype:env)'},
-    {label:'Server Error', dork:'__TARGET__ inurl:"error" | "SQLSTATE" | "SQLException" | "SQL syntax error" | "SQL error" | "database error" | "database exception" | "PDOException" | "MySQLException" | "MySQL error" | "PostgreSQL error" | "PostgreSQL exception" | "SQLite error" | "SQLiteException" | "Microsoft SQL Server" | "SQL Server error" | "ODBC SQL" | "ODBC error" | "ORA-" | "Oracle error" | "Oracle exception" | "PL/SQL" | "syntax error at or near" | "You have an error in your SQL syntax" | "Warning: mysql_" | "mysql_query()" | "mysqli_query()" | "pg_query()" | "pg_connect()" | "PDO::" | "Unclosed quotation mark" | "Incorrect syntax near" | "quoted string not properly terminated" | "SQL command not properly ended" | "invalid SQL statement" | "invalid query" | "query failed" | "query exception" | "database query error" | "database query exception" | intitle:"exception" | intitle:"failure" | intitle:"error" | "fatal error" | "runtime error" | "application error" | "server error" | "internal server error" | "database error" | "SQL error" | "syntax error" | "parse error" | "warning:" | "notice:" | "undefined variable" | "undefined index" | "undefined property" | "null pointer" | "nullreferenceexception" | "stack trace" | "stacktrace" | "traceback" | "debug mode" | "debug information" | "debug output" | "error details" | "error details:" | "error message" | "error occurred" | "an error occurred" | "unexpected error" | "unexpected exception" | "uncaught exception" | "unhandled exception" | "unhandled error" | "internal exception" | "application exception" | "server exception" | "request exception" | "system exception" | "connection exception" | "authentication exception" | "authorization exception" | "permission denied" | "access denied" | "access violation" | "invalid argument" | "invalid parameter" | "invalid request" | "bad request" | "request failed" | "operation failed" | "failed to execute" | "failed to connect" | "failed to load" | "failed to process" | "failed to open" | "could not connect" | "could not load" | "could not process" | "unable to connect" | "unable to load" | "unable to process" | "connection refused" | "connection reset" | "connection timeout" | "request timeout" | "gateway timeout" | "service unavailable" | "temporary failure" | "internal failure" | "critical error" | "fatal exception" | "fatal failure" | "critical exception" | "configuration error" | "configuration exception" | "configuration failure" | "initialization error" | "initialization exception" | "startup error" | "startup failure" | "module error" | "import error" | "compile error" | "compilation error" | "template error" | "render error" | "routing error" | "routing exception" | "API error" | "API exception" | "API failure" | "JSON error" | "XML error" | "serialization error" | "deserialization error" | "database exception" | "query exception" | "query failed" | "SQLSTATE" | "PDOException" | "SQLException" | "HttpException" | "IOException" | "FileNotFoundException"'},
-    {label:'Admin panels', dork:'__TARGET__ inurl:"admin" | inurl:"administrator" | inurl:"admin-panel" | inurl:"admin_panel" | inurl:"adminpanel" | inurl:"admin-console" | inurl:"admin_console" | inurl:"adminconsole" | inurl:"admin-dashboard" | inurl:"admin_dashboard" | inurl:"admindashboard" | inurl:"dashboard" | inurl:"control-panel" | inurl:"control_panel" | inurl:"controlpanel" | inurl:"management" | inurl:"manage" | inurl:"backend" | inurl:"backoffice" | inurl:"staff" | inurl:"portal" | inurl:"cp" | inurl:"cms" | inurl:"moderator" | inurl:"moderation" | inurl:"superadmin" | inurl:"super-admin" | inurl:"sysadmin" | inurl:"webadmin" | inurl:"admin-area" | inurl:"admin_area" | inurl:"adminarea" | inurl:"admin-login" | inurl:"admin_login" | inurl:"adminlogin" | intitle:"Admin Login" | intitle:"Administrator Login" | intitle:"Admin Panel" | intitle:"Admin Dashboard" | intitle:"Administration Panel" | intitle:"Administration" | intitle:"Administrator" | intitle:"Dashboard" | intitle:"Control Panel" | intitle:"Management Console" | intitle:"Admin Console" | intitle:"Admin Portal" | intitle:"Admin Area" | intitle:"Admin Center" | intitle:"Administration Center" | intitle:"Management Panel" | intitle:"Management Dashboard" | intitle:"User Management" | intitle:"User Administration" | intitle:"System Administration" | intitle:"System Management" | intitle:"Site Administration" | intitle:"Site Management" | intitle:"Backend" | intitle:"Back Office" | intitle:"Staff Portal" | intitle:"Staff Login" | intitle:"Moderator Login" | intitle:"Moderator Panel" | intitle:"Moderator Dashboard" | intitle:"Super Admin" | intitle:"Super Administrator" | intitle:"Admin Area Login" | intitle:"Admin Sign In" | intitle:"Administrator Sign In" | intitle:"Dashboard Login" | intitle:"Control Panel Login" | intitle:"CMS Login" | intitle:"CMS Dashboard" | intitle:"CMS Administration" | intitle:"Manage Site" | intitle:"Manage Users" | intitle:"Manage Accounts" | intitle:"Manage Content" | intitle:"Manage Website" | intitle:"Site Dashboard" | intitle:"Web Dashboard" | intitle:"Main Dashboard" | intitle:"Account Dashboard" | intitle:"User Dashboard" | intitle:"System Dashboard" | intitle:"Admin Home" | intitle:"Administration Home" | intitle:"Admin Tools" | intitle:"Administration Tools" | intitle:"System Console" | intitle:"Web Console" | intitle:"Management Console" | intitle:"Admin Console"'},
-    {label:'Uploaded documents', dork:'__TARGET__ (filetype:doc OR filetype:xls OR filetype:ppt | "choose file" | intitle:"Upload" | inurl:upload | intitle:"File Upload" | inurl:upload.php | inurl:fileupload)'}
+    {label:'Subdomains', dork:'site:*.__TARGET__ -site:www.__TARGET__'},
+    {label:'Login panels', dork:'__SITE__ (inurl:login OR intitle:"login")'},
+    {label:'Signup pages', dork:'__SITE__ (inurl:signup OR inurl:register)'},
+    {label:'Exposed directories', dork:'__SITE__ intitle:"index of"'},
+    {label:'PDF documents', dork:'__SITE__ filetype:pdf'},
+    {label:'Config / env files', dork:'__SITE__ (filetype:env OR filetype:config OR filetype:ini)'},
+    {label:'SQL / database files', dork:'__SITE__ filetype:sql'},
+    {label:'Backup files', dork:'__SITE__ (filetype:bak OR filetype:old OR filetype:backup)'},
+    {label:'Admin panels', dork:'__SITE__ inurl:admin'},
+    {label:'Uploaded documents', dork:'__SITE__ (filetype:doc OR filetype:xls OR filetype:ppt)'}
   ];
 
   // ---- search engines ----
@@ -609,8 +624,8 @@
       customName.focus();
       return;
     }
-    if(pattern.indexOf('__TARGET__') === -1){
-      pattern = '__TARGET__ ' + pattern;
+    if(pattern.indexOf('__TARGET__') === -1 && pattern.indexOf('__SITE__') === -1){
+      pattern = '__SITE__ ' + pattern;
     }
     categories.push({label:name, dork:pattern, custom:true});
     renderOptions();
@@ -686,6 +701,15 @@
   // ---- query preview + run ----
   var preview = document.getElementById('builtQuery');
 
+  var includeSubdomains = document.getElementById('includeSubdomains');
+
+  function siteExpr(target){
+    if(includeSubdomains.checked){
+      return '(site:' + target + ' OR site:*.' + target + ')';
+    }
+    return 'site:' + target;
+  }
+
   function buildQuery(){
     var target = targetInput.value.trim();
     var cat = categories[typeSelect.value] || categories[0];
@@ -694,7 +718,7 @@
     if(!target){
       return '';
     }
-    var q = cat.dork.split('__TARGET__').join(target);
+    var q = cat.dork.split('__SITE__').join(siteExpr(target)).split('__TARGET__').join(target);
     if(extra){
       q = q + ' ' + extra;
     }
@@ -719,6 +743,7 @@
   targetInput.addEventListener('input', updateQuery);
   typeSelect.addEventListener('change', updateQuery);
   engineSelect.addEventListener('change', updateQuery);
+  includeSubdomains.addEventListener('change', updateQuery);
   targetInput.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ runSearch(); }
   });
@@ -788,7 +813,7 @@
         '</span><span class="lib-go">' + entry.note + ' — click to run →</span>';
       row.addEventListener('click', function(){
         var target = targetInput.value.trim() || 'example.com';
-        var q = entry.text.split('{target}').join(target);
+        var q = entry.text.split('site:{target}').join(siteExpr(target)).split('{target}').join(target);
         var eng = currentEngine();
         window.open(eng.url + encodeURIComponent(q), '_blank', 'noopener');
       });
