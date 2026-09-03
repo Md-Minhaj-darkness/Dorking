@@ -411,6 +411,15 @@
         <div class="section-label">or click an extra operator to append manually</div>
         <div class="ops" id="opsGrid"></div>
 
+        <div class="row" id="opPromptRow" style="display:none;">
+          <div class="field-row">
+            <span class="prompt" id="opPromptLabel">value:</span>
+            <input id="opPromptInput" type="text" placeholder="type a value, then press Add" autocomplete="off" spellcheck="false">
+          </div>
+          <button class="op" id="opPromptAdd" type="button" style="flex-shrink:0;">Add</button>
+          <button class="op" id="opPromptCancel" type="button" style="flex-shrink:0;">Cancel</button>
+        </div>
+
         <div class="section-label">add your own dork</div>
         <div class="row">
           <div class="field-row">
@@ -605,25 +614,62 @@
 
   // ---- extra manual operators ----
   var operators = [
-    {tag:'intitle:', desc:'word in page title'},
-    {tag:'intext:', desc:'word in page body'},
-    {tag:'ext:php', desc:'match file extension'},
-    {tag:'-inurl:', desc:'exclude URL pattern'},
-    {tag:'cache:', desc:'view cached version'},
-    {tag:'related:', desc:'similar sites'}
+    {tag:'intitle:', desc:'word in page title', quoted:true},
+    {tag:'intext:', desc:'word in page body', quoted:true},
+    {tag:'ext:', desc:'match file extension', quoted:false},
+    {tag:'-inurl:', desc:'exclude URL pattern', quoted:false},
+    {tag:'cache:', desc:'view cached version', quoted:false},
+    {tag:'related:', desc:'similar sites', quoted:false}
   ];
 
   var opsGrid = document.getElementById('opsGrid');
   var targetInput = document.getElementById('targetInput');
 
+  var opPromptRow = document.getElementById('opPromptRow');
+  var opPromptLabel = document.getElementById('opPromptLabel');
+  var opPromptInput = document.getElementById('opPromptInput');
+  var opPromptAdd = document.getElementById('opPromptAdd');
+  var opPromptCancel = document.getElementById('opPromptCancel');
+  var pendingOp = null;
+
+  function openOpPrompt(op){
+    pendingOp = op;
+    opPromptLabel.textContent = op.tag;
+    opPromptInput.value = '';
+    opPromptRow.style.display = 'flex';
+    opPromptInput.focus();
+  }
+
+  function closeOpPrompt(){
+    opPromptRow.style.display = 'none';
+    pendingOp = null;
+  }
+
+  function confirmOpPrompt(){
+    if(!pendingOp){ return; }
+    var val = opPromptInput.value.trim();
+    if(!val){ closeOpPrompt(); return; }
+    var piece = pendingOp.quoted ? pendingOp.tag + '"' + val + '"' : pendingOp.tag + val;
+    targetInput.dataset.extra = (targetInput.dataset.extra || '') + ' ' + piece;
+    updateQuery();
+    closeOpPrompt();
+    targetInput.focus();
+  }
+
+  opPromptAdd.addEventListener('click', confirmOpPrompt);
+  opPromptCancel.addEventListener('click', closeOpPrompt);
+  opPromptInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ confirmOpPrompt(); }
+    if(e.key === 'Escape'){ closeOpPrompt(); }
+  });
+
   operators.forEach(function(op){
     var btn = document.createElement('button');
     btn.className = 'op';
+    btn.type = 'button';
     btn.innerHTML = '<b>' + op.tag + '</b><span class="desc">' + op.desc + '</span>';
     btn.addEventListener('click', function(){
-      targetInput.dataset.extra = (targetInput.dataset.extra || '') + ' ' + op.tag;
-      updateQuery();
-      targetInput.focus();
+      openOpPrompt(op);
     });
     opsGrid.appendChild(btn);
   });
