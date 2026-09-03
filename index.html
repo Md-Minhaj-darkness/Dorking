@@ -549,6 +549,7 @@
     {label:'Login panels', dork:'__TARGET__ (inurl:login OR intitle:"login")'},
     {label:'Signup / Registation pages', dork:'__TARGET__ intitle:"Sign Up" inurl:signup | intitle:"Create Account" | inurl:register | intitle:"Register" | inurl:register | intitle:"Join Our Waitlist" | intitle:"Join the Waitlist" | intitle:"Subscribe" | inurl:newsletter | intitle:"Newsletter" | inurl:subscribe'},
     {label:'Exposed directories', dork:'__TARGET__ intitle:"index of"'},
+     {label:'Genaric Input', dork:'__TARGET__ intext:"<form" intext:"<input type=\"text\"" inurl:.php | inurl:".php?id=" | intext:"input" | inurl:".*?*=" intext:"input" | inurl:contact | intext:"name" | intext:"email" | intext:"message"'},
     {label:'PDF documents', dork:'__TARGET__ filetype:pdf'},
     {label:'Config / env files', dork:'__TARGET__ (filetype:env OR filetype:config OR filetype:ini)'},
     {label:'SQL / database files', dork:'__TARGET__ filetype:sql'},
